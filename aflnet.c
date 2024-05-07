@@ -722,6 +722,95 @@ region_t* extract_requests_http(unsigned char* buf, unsigned int buf_size, unsig
   return regions;
 }
 
+//reference M3m3M4n
+typedef struct mbap_be{
+  unsigned short tid; //transaction id: 2 Bytes
+  unsigned short protocol; //protocol identifier: 2 Bytes
+  unsigned short length; //length: 2 Bytes = uid + data fields
+  unsigned char uid; //unit id: 1 Bytes
+  unsigned char fid; //function code: 1 Bytes
+}mbap_be;
+
+//unsigned short通常占用2 Bytes, 该表达式用于交换16位整数的低8位和高8位。用于字节序转换，大端到小端
+#define ushort_be_to_se(v) ((v & 0xff) << 8) + ((v & 0xff00 >> 8))      
+
+//add modbus
+//buf: seed block; region_count_ref: ??
+//将buf分割为多个field，并指出每个field的大小，返回
+region_t* extract_requests_modbus(unsigned char* buf, unsigned int buf_size, unsigned int* region_count_ref)
+{
+  unsigned char *end_ptr = buf + buf_size -1;
+  unsigned char *cur_ptr = buf;
+  unsigned int cur_start = 0; //index
+  unsigned int region_count = 0; //????
+  region_t *regions = NULL;
+
+  if(buf == NULL || buf_size == 0){
+    *region_count_ref = region_count;
+    return regions;
+  }
+
+  while (cur_ptr <= end_ptr){
+    unsigned int remaining_buf_size = end_ptr - cur_ptr + 1;
+    //MBAP + function code = 8 Bytes
+    //sizeof might return wrong value due to alignment
+    if(remaining_buf_size >= sizeof(mbap_be)){
+      region_count += 5; //有5个field?
+      regions = (region_t *)ck_realloc(regions, region_count*sizeof(region_t)); //Re-allocate a buffer, checking for issues and zeroing any newly-added tail
+      for(int count = region_count - 5; count < region_count; count++){
+        regions[count].state_sequence = NULL;
+        regions[count].state_count = 0;
+        //MBAP: transaction id, protocol id, length: 2 Bytes
+        if(count < region_count -2){
+          regions[count].start_byte = cur_start++;  //0
+          regions[count].end_byte = cur_start++;    //1
+        }else{ //MBAP: unit id, function code: 1 Bytes
+          regions[count].start_byte = cur_start;    //2
+          regions[count].end_byte = cur_start++;    //2
+        }
+      }
+      // check data region
+      mbap_be *header = (mbap_be *)cur_ptr;
+      //uid + fcode + data -2 = data length
+      // data field <= 252 bytes for valid packet
+      // length field =  uid (2) + data <= 254
+      unsigned short remaining_packet_length = ushort_be_to_se(header->length);
+      remaining_packet_length = (remaining_packet_length > 254) ? 254 : remaining_packet_length;
+      unsigned short data_length = remaining_packet_length - 2;
+      unsigned int packet_length = remaining_packet_length + 6;
+      unsigned short available_data_length = (remaining_buf_size > packet_length) ? data_length : remaining_buf_size - sizeof(mbap_be);
+      cur_ptr = cur_ptr + sizeof(mbap_be); // point to data field
+      if(available_data_length > 0){
+        region_count = region_count +1;
+        regions = (region_t *)ck_realloc(regions, region_count*sizeof(region_t)); 
+        regions[region_count-1].state_sequence = NULL;
+        regions[region_count-1].state_count = 0;
+        regions[region_count-1].start_byte = cur_start;
+        cur_start = cur_start + available_data_length -1;
+        regions[region_count -1].end_byte = cur_start++;
+      }
+
+      cur_ptr = cur_ptr + available_data_length;
+
+    }else{
+      //malformed
+      if(remaining_buf_size > 0){
+        region_count = region_count +1;
+        regions = (region_t *)ck_realloc(regions, region_count*sizeof(region_t)); 
+        regions[region_count-1].start_byte = cur_start;
+        regions[region_count-1].end_byte = cur_start + remaining_buf_size -1;
+        regions[region_count-1].state_sequence = NULL;
+        regions[region_count-1].state_count = 0;
+      }
+      break;
+    }
+  }
+
+  *region_count_ref = region_count; //region_count一共有多少个field
+  return regions;
+}
+
+
 unsigned int* extract_response_codes_smtp(unsigned char* buf, unsigned int buf_size, unsigned int* state_count_ref)
 {
   char *mem;
