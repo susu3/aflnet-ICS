@@ -703,6 +703,7 @@ region_t* extract_requests_http(unsigned char* buf, unsigned int buf_size, unsig
         mem=(char *)ck_realloc(mem, mem_size);
       }
     }
+
   }
   if (mem) ck_free(mem);
 
@@ -755,7 +756,7 @@ region_t* extract_requests_modbus(unsigned char* buf, unsigned int buf_size, uns
     //MBAP + function code = 8 Bytes
     //sizeof might return wrong value due to alignment
     if(remaining_buf_size >= sizeof(mbap_be)){
-      region_count += 5; //有5个field?
+      region_count += 5; //有5个field
       regions = (region_t *)ck_realloc(regions, region_count*sizeof(region_t)); //Re-allocate a buffer, checking for issues and zeroing any newly-added tail
       for(int count = region_count - 5; count < region_count; count++){
         regions[count].state_sequence = NULL;
@@ -806,8 +807,8 @@ region_t* extract_requests_modbus(unsigned char* buf, unsigned int buf_size, uns
     }
   }
 
-  *region_count_ref = region_count; //region_count一共有多少个field
-  return regions;
+  *region_count_ref = region_count; //region_count表示buf中一共有多少个field
+  return regions; //将buf中每个field的开始结束位置标记
 }
 
 
@@ -1445,6 +1446,58 @@ unsigned int* extract_response_codes_http(unsigned char* buf, unsigned int buf_s
   if (mem) ck_free(mem);
   *state_count_ref = state_count;
   return state_sequence;
+}
+
+//same as extract request
+//buf: response data; state_count_ref:??
+unsigned int* extract_response_codes_modbus(unsigned char* buf, unsigned int buf_size, unsigned int* state_count_ref){
+  unsigned char* end_ptr = buf + buf_size -1;
+  unsigned char* cur_ptr = buf;
+  unsigned int* state_sequence = NULL;
+  unsigned int state_count = 0;
+
+  state_count++;
+  state_sequence = (unsigned int*)ck_realloc(state_sequence, state_count*sizeof(unsigned int));
+  state_sequence[state_count-1] = 0;
+
+  if(buf == NULL || buf_size == 0)
+    goto RET;
+
+  while(cur_ptr <= end_ptr){
+
+    unsigned int remaining_buf_size = end_ptr - cur_ptr + 1;
+    // mbap + func id =8
+    // sizeof might return wrong value due to alignment
+    if(remaining_buf_size >= sizeof(mbap_be)){
+      mbap_be *header = (mbap_be *)cur_ptr;
+      //function code '0' is not valid，1-255，128-255 for exception response
+      //normal response: function code (1-127) + data response
+      //exception response: exception function code (function code + 0x80) + exception code (1 Byte, )
+      unsigned int message_code = header->fid;
+
+      unsigned short remaining_packet_length = ushort_be_to_se(header->length);
+      unsigned short data_length = remaining_packet_length - 2;
+      unsigned int packet_length = remaining_packet_length + 6;
+      unsigned short available_data_length = (remaining_buf_size > packet_length) ? data_length : remaining_buf_size - sizeof(mbap_be);
+
+      cur_ptr = cur_ptr + sizeof(mbap_be);
+      state_count++;
+      state_sequence = (unsigned int *)ck_realloc(state_sequence, state_count*sizeof(unsigned int));
+      //exception response: exception function code (function code + 0x80) + exception code (1 Byte, )
+      if(header->fid > 127 || header->fid == 0){ //exception response
+        if(available_data_length > 0){
+          unsigned int len = (available_data_length > 3)? 3: available_data_length; //exception code 1 byte, why 3 ?
+          memcpy((char *)&message_code+1, cur_ptr, len);
+        }
+      }
+      state_sequence[state_count-1] = message_code;
+      cur_ptr = cur_ptr + available_data_length;
+    }
+  }
+
+  RET:
+    *state_count_ref = state_count;
+    return state_sequence;
 }
 
 // kl_messages manipulating functions
