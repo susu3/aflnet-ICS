@@ -3,7 +3,7 @@ This assumes that you have read the AFLNet README.md before reading this tutoria
 
 This tutorial was tested on Ubuntu 20.04.
 
-## Step-0. Server compilation
+## Step-0. Server compilation & setup
 You can download the source code of libmodbus from the [libmodbus](https://github.com/stephane/libmodbus). To compile and set up the libmodbus for fuzzing, please use the following commands.
 
 ```bash
@@ -20,10 +20,12 @@ patch -p1 < $AFLNET/tutorials/libmodbus/fuzzing.patch
 ./configure --enable-static
 make clean all
 ```
-When dcmqrscp server source code has been successfully compiled, the hardest part starts. You need to setup the server and check that everything works correctly.
+We apply a patch to make the libmodbus server effectively fuzzable. In addition to the changes for genearting a Makefile which uses afl-clang-fast++ to do the coverage feedback-enabled instrumentation, we make a small change to the test program tests/random-test-server.c so that the port is a parameter. 
+
+Once libmodbus source code has been successfully compiled, we can see the compiled library ```bash libmodbus.a``` in ```bash src/.libs```.
 
 ## Step-1. Server setup
-To setup dcmqrscp server follow commands:
+
 
 Initialize DICOM database:
 
