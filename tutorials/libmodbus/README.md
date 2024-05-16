@@ -17,48 +17,34 @@ git checkout 5c14f13
 patch -p1 < $AFLNET/tutorials/libmodbus/fuzzing.patch
 # Compile source
 ./autogen.sh
+# use static library mode to generate the static library
 ./configure --enable-static
 make clean all
 ```
 We apply a patch to make the libmodbus server effectively fuzzable. In addition to the changes for genearting a Makefile which uses afl-clang-fast++ to do the coverage feedback-enabled instrumentation, we make a small change to the test program tests/random-test-server.c so that the port is a parameter. 
 
-Once libmodbus source code has been successfully compiled, we can see the compiled library ```bash libmodbus.a``` in ```bash src/.libs```.
+Once libmodbus source code has been successfully compiled, we can see the compiled library ``` libmodbus.a``` in ```src/.libs```. We can also see some test examples are provided in the 'tests' directory, you can run these programs for a quick test of libmodbus. However, these compiled programs are shell scripts, not binary executables, so they cannot be used for fuzzing test. That's why we use static library mode to generate the static library. 
 
-## Step-1. Server setup
+Then, we generate the program for fuzzing use the following commands.
+```bash
+#
+cd tests
+afl-clang-fast random-test-server.c -I../src ../src/.libs/libmodbus.a -o server
+```
 
+We should see the output ```server``` in the tests directory.
 
-Initialize DICOM database:
+## Step-1. Prepare message sequences as seed inputs
 
-cd $WORKDIR/dcmtk/build/bin
+You can find a file to use as seed inputs in the aflnet/tutorials/dcmqrscp/in-dicom directory. If you want to create your own inputs, please follow the tutorial for fuzzing Live555 RTSP server included in the main AFLNet README.md. You can use the program in tests to generate the requests.
+```bash
+cd tests
+./random-test-server
+# in another terminal
+./random-test-client
+```
 
-# Create directory for DICOM database
-mkdir ACME_STORE
-Create configuration file:
-
-cp $AFLNET/tutorials/dcmqrscp/dcmqrscp.cfg ./
-Fix paths to ACME_STORE directory in configuration file dcmqrscp.cfg(line: 69).
-
-Start dcmqrscp.
-
-export DCMDICTPATH=$WORKDIR/dcmtk/dcmdata/data/dicom.dic
-./dcmqrscp
-Check that everything works correctly:
-
-# Open new terminal.
-# Install DICOM toolkit:
-sudo apt install dcmtk
-
-# Test connection:
-echoscu -v localhost 5158
-storescu -v localhost 5158 $AFLNET/tutorials/dcmqrscp/test.dcm
-findscu -P localhost 5158 $AFLNET/tutorials/dcmqrscp/query.dcm
-getscu localhost 5158 $AFLNET/tutorials/dcmqrscp/query.dcm
-If everything works correctly, dcmqrscp won't write any logs.
-
-Step-2. Prepare message sequences as seed inputs
-You can find various DICOM queries to use as seed inputs in the aflnet/tutorials/dcmqrscp/in-dicom directory. If you want to create your own inputs, please follow the tutorial for fuzzing Live555 RTSP server included in the main AFLNet README.md.
-
-Step-3. Fuzzing
+## Step-2. Fuzzing
 cd $WORKDIR/dcmtk/build/bin
 afl-fuzz -d -i $AFLNET/tutorials/dcmqrscp/in-dicom -o out-dicom -N tcp://127.0.0.1/5158 -P DICOM -D 10000 -E -K -R ./dcmqrscp
 With this particular version of dcmqrscp, you should get a few crashes after waiting long enough.
