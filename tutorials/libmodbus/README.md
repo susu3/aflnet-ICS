@@ -23,7 +23,7 @@ make clean all
 ```
 We apply a patch to make the libmodbus server effectively fuzzable. In addition to the changes for genearting a Makefile which uses afl-clang-fast++ to do the coverage feedback-enabled instrumentation, we make a small change to the test program tests/random-test-server.c so that the port is a parameter. 
 
-Once libmodbus source code has been successfully compiled, we can see the compiled library ``` libmodbus.a``` in ```src/.libs```. We can also see some test examples are provided in the 'tests' directory, you can run these programs for a quick test of libmodbus. However, these compiled programs are shell scripts, not binary executables, so they cannot be used for fuzzing test. That's why we use static library mode to generate the static library. 
+Once libmodbus source code has been successfully compiled, we can see the compiled library ```libmodbus.a``` in ```src/.libs```. We can also see some test examples are provided in the 'tests' directory, you can run these programs for a quick test of libmodbus. However, these compiled programs are shell scripts, not binary executables, so they cannot be used for fuzzing test. That's why we use static library mode to generate the static library. 
 
 Then, we generate the program for fuzzing use the following commands.
 ```bash
