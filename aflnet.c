@@ -1449,7 +1449,7 @@ unsigned int* extract_response_codes_http(unsigned char* buf, unsigned int buf_s
 }
 
 //same as extract request
-//buf: response data; state_count_ref:??
+//buf: response data; state_count_ref: 
 unsigned int* extract_response_codes_modbus(unsigned char* buf, unsigned int buf_size, unsigned int* state_count_ref){
   unsigned char* end_ptr = buf + buf_size -1;
   unsigned char* cur_ptr = buf;
