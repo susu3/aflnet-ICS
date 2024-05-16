@@ -1,29 +1,28 @@
-Tutorial - Fuzzing dcmqrscp server
+# Tutorial - Fuzzing libmodbus server
 This assumes that you have read the AFLNet README.md before reading this tutorial.
 
-This tutorial was tested on Ubuntu 18.04.
+This tutorial was tested on Ubuntu 20.04.
 
-Step-0. Server compilation
-You can download the source code of dcmqrscp from the Official DCMTK GitHub Mirror. In this example, we will fuzz a specific version of dcmqrscp. To compile and set up this version of dcmqrscp for fuzzing, please use the following commands.
+## Step-0. Server compilation
+You can download the source code of libmodbus from the [libmodbus](https://github.com/stephane/libmodbus). To compile and set up the libmodbus for fuzzing, please use the following commands.
 
-export WORKDIR=$(pwd)
+```bash
 cd $WORKDIR
-
-# Clone a specific version of dcmtk repository
-git clone https://github.com/DCMTK/dcmtk
-cd dcmtk
-git checkout 7f8564c
-
+# Clone libmodbus repository
+git clone https://github.com/stephane/libmodbus.git
+# Move to the folder
+cd libmodbus
+git checkout 5c14f13
 # Apply a patch to change C/C++ compiler to afl-clang-fast/afl-clang-fast++
-patch -p1 < $AFLNET/tutorials/dcmqrscp/7f8564c.patch
-
+patch -p1 < $AFLNET/tutorials/libmodbus/fuzzing.patch
 # Compile source
-mkdir build && cd build
-cmake ..
-make dcmqrscp
+./autogen.sh
+./configure --enable-static
+make clean all
+```
 When dcmqrscp server source code has been successfully compiled, the hardest part starts. You need to setup the server and check that everything works correctly.
 
-Step-1. Server setup
+## Step-1. Server setup
 To setup dcmqrscp server follow commands:
 
 Initialize DICOM database:
