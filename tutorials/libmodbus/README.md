@@ -49,6 +49,6 @@ cd tests
 cd $WORKDIR/libmodbus/tests
 afl-fuzz -d -i $AFLNET/tutorials/libmodbus/in-modbus -o out-libmodbus -N tcp://127.0.0.1/1502 -P MODBUS -D 10000 -q 3 -s 3 -E -K -R ./server 1502
 ```
-With this particular version of dcmqrscp, you should get a few crashes after waiting long enough.
+
 
  
