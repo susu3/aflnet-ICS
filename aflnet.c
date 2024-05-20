@@ -733,7 +733,7 @@ typedef struct mbap_be{
 }mbap_be;
 
 //unsigned short通常占用2 Bytes, 该表达式用于交换16位整数的低8位和高8位。用于字节序转换，大端到小端
-#define ushort_be_to_se(v) ((v & 0xff) << 8) + ((v & 0xff00 >> 8))      
+#define ushort_be_to_se(v) ((v & 0xff) << 8) + ((v & 0xff00) >> 8)     
 
 //add modbus
 //buf: seed block; region_count_ref: ??
