@@ -24,3 +24,5 @@ afl-llvm-rt.o
 
 #other
 .DS_Store
+test.cpp
+test
