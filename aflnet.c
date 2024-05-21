@@ -733,8 +733,11 @@ typedef struct mbap_be{
 }mbap_be;
 #pragma pack (pop)
 
+#define ushort_be_to_se(v) ((v & 0xff) << 8) + ((v & 0xff00) >> 8)
+
 //buf: seed block; region_count_ref: region count
 //将buf分割为多个field，并指出每个field的大小，返回
+
 region_t* extract_requests_modbus(unsigned char* buf, unsigned int buf_size, unsigned int* region_count_ref)
 {
   unsigned char* end_ptr = buf + buf_size -1;
@@ -770,7 +773,7 @@ region_t* extract_requests_modbus(unsigned char* buf, unsigned int buf_size, uns
       mbap_be *header = (mbap_be *)cur_ptr;
       // data field <= 252 bytes for valid packet
       // length field = uid + fid + data <= 254
-      unsigned short remaining_packet_length = header->length;
+      unsigned short remaining_packet_length = ushort_be_to_se(header->length);
       remaining_packet_length = (remaining_packet_length > 254) ? 254 : remaining_packet_length;
       unsigned short data_length = remaining_packet_length - 2;
       unsigned int packet_length = remaining_packet_length + 6;
@@ -807,6 +810,10 @@ region_t* extract_requests_modbus(unsigned char* buf, unsigned int buf_size, uns
   *region_count_ref = region_count; //region_count表示buf中一共有多少个field
   return regions; //将buf中每个field的开始结束位置标记
 }
+
+
+//按照每个request来划分
+
 
 
 unsigned int* extract_response_codes_smtp(unsigned char* buf, unsigned int buf_size, unsigned int* state_count_ref)
@@ -1471,7 +1478,7 @@ unsigned int* extract_response_codes_modbus(unsigned char* buf, unsigned int buf
       //exception response: exception function code (function code + 0x80) + exception code (1 Byte, )
       unsigned int message_code = header->fid;
 
-      unsigned short remaining_packet_length = header->length;
+      unsigned short remaining_packet_length = ushort_be_to_se(header->length);
       unsigned short data_length = remaining_packet_length - 2;
       unsigned int packet_length = remaining_packet_length + 6;
       unsigned short available_data_length = (remaining_buf_size > packet_length) ? data_length : remaining_buf_size - sizeof(mbap_be);
