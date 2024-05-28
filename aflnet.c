@@ -816,6 +816,20 @@ region_t* extract_requests_modbus(unsigned char* buf, unsigned int buf_size, uns
 //按照每个request来划分
 region_t* extract_requests_modbus(unsigned char* buf, unsigned int buf_size, unsigned int* region_count_ref)
 {
+    File *file = fopen("buf.txt", "w");
+    if(file == NULL){
+      perror("fopen error\n");
+      return;
+    }
+    fflush(file);
+    fprintf(file, "buf_size: %d", buf_size);
+    for(int i = 0; i < buf_size ; i++){
+      fprintf(file, "%02x", buf[i]);
+      if (i % 16 == 0)
+        fprintf(file, "\n");
+    }
+    fflush(file);
+
     unsigned char* end_ptr = buf + buf_size -1;
     unsigned char* cur_ptr = buf;
     unsigned int region_count = 0;
@@ -828,16 +842,19 @@ region_t* extract_requests_modbus(unsigned char* buf, unsigned int buf_size, uns
     }
 
     while (cur_ptr <= end_ptr){
+
+        fflush(file);
+
         unsigned int remaining_buf_size = end_ptr - cur_ptr + 1;
         //MBAP + function code = 8 Bytes
-        if (remaining_buf_size >= sizeof(mbap_be)){
+        if (remaining_buf_size >= sizeof(mbap_be)){ //remaining_buf_size >=8
             region_count ++;
             regions = (region_t *)ck_realloc(regions, region_count*sizeof(region_t)); //Re-allocate a buffer, checking for issues and zeroing any newly-added tail
 
             regions[region_count-1].state_sequence = NULL;
             regions[region_count-1].state_count = 0;
             regions[region_count-1].start_byte = cur;
-            //printf("region_count: %d; start_byte: %d",region_count,cur);
+            fprintf(file, "region_count: %d; start_byte: %d",region_count-1,regions[region_count-1].start_byte);
 
             // check data region
             mbap_be *header = (mbap_be *)cur_ptr;
@@ -845,15 +862,16 @@ region_t* extract_requests_modbus(unsigned char* buf, unsigned int buf_size, uns
             // length field = uid + fid + data <= 254
             unsigned short remaining_packet_length = ushort_be_to_se(header->length);
             remaining_packet_length = (remaining_packet_length > 254) ? 254 : remaining_packet_length;
-            unsigned short data_length = remaining_packet_length - 2;
-            unsigned int packet_length = remaining_packet_length + 6;
-            unsigned short available_data_length = (remaining_buf_size >= packet_length) ? data_length : remaining_buf_size - sizeof(mbap_be);
+            remaining_packet_length = (remaining_buf_size - 6 >= remaining_packet_length) ? remaining_packet_length : remaining_buf_size - 6;
+            //unsigned short data_length = remaining_packet_length - 2;
+            //unsigned int packet_length = remaining_packet_length + 6;
+            //unsigned short available_data_length = (remaining_buf_size >= packet_length) ? data_length : remaining_buf_size - sizeof(mbap_be);
 
-            if (available_data_length > 0){
-                cur = cur + sizeof(mbap_be) + available_data_length -1;
+            if (remaining_packet_length > 0){
+                cur = cur + sizeof(mbap_be) - 2 + remaining_packet_length;
                 regions[region_count -1].end_byte = cur++;
-                //printf("region_count: %d; end_byte: %d",region_count,cur);
-                cur_ptr = cur_ptr + sizeof(mbap_be) + available_data_length;
+                fprintf(file, "; end_byte: %d\n", regions[region_count-1].end_byte);
+                cur_ptr = cur_ptr + sizeof(mbap_be) - 2 + remaining_packet_length;
             }else {
                 break;
             }
@@ -867,6 +885,7 @@ region_t* extract_requests_modbus(unsigned char* buf, unsigned int buf_size, uns
                 regions[region_count-1].end_byte = cur + remaining_buf_size -1;
                 regions[region_count-1].state_sequence = NULL;
                 regions[region_count-1].state_count = 0;
+                fprintf(file, "region_count: %d; start_byte: %d; end_byte: %d\n",region_count-1,regions[region_count-1].start_byte, regions[region_count-1].end_byte);
             }
             break;
         }
