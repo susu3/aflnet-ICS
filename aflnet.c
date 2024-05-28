@@ -816,6 +816,23 @@ region_t* extract_requests_modbus(unsigned char* buf, unsigned int buf_size, uns
 //按照每个request来划分
 region_t* extract_requests_modbus(unsigned char* buf, unsigned int buf_size, unsigned int* region_count_ref)
 {
+<<<<<<< HEAD
+=======
+    FILE *file = fopen("buf.txt", "w");
+    if(file == NULL){
+      perror("fopen error\n");
+      return;
+    }
+    fflush(file);
+    fprintf(file, "buf_size: %d", buf_size);
+    for(int i = 0; i < buf_size ; i++){
+      fprintf(file, "%02x", buf[i]);
+      if (i % 16 == 0)
+        fprintf(file, "\n");
+    }
+    fflush(file);
+
+>>>>>>> ea47af2724112617bbae0fe28b19c9aad9beaa25
     unsigned char* end_ptr = buf + buf_size -1;
     unsigned char* cur_ptr = buf;
     unsigned int region_count = 0;
