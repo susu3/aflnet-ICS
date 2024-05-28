@@ -816,7 +816,7 @@ region_t* extract_requests_modbus(unsigned char* buf, unsigned int buf_size, uns
 //按照每个request来划分
 region_t* extract_requests_modbus(unsigned char* buf, unsigned int buf_size, unsigned int* region_count_ref)
 {
-    File *file = fopen("buf.txt", "w");
+    FILE *file = fopen("buf.txt", "w");
     if(file == NULL){
       perror("fopen error\n");
       return;
