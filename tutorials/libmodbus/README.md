@@ -50,7 +50,7 @@ cd $WORKDIR/libmodbus/tests
 afl-fuzz -d -i $AFLNET/tutorials/libmodbus/in-modbus -o out-libmodbus -N tcp://127.0.0.1/1502 -P MODBUS -D 10000 -q 3 -s 3 -E -K -R ./server 1502
 ```
 When you enter the fuzz command, you will see the following screenshot in the terminal. Once AFLNet discovers a bug, a crash or a hang, a test case containing the message sequence that triggers the bug will be stored in ```replayable-crashes``` or ```replayable-hangs``` folder. Then you can use the untility ```aflnet-replay``` to replay these message sequences. 
-![screenshot of the fuzz program](images\WechatIMG1497.jpg)
+![screenshot of the fuzz program](WechatIMG1497.jpg)
 
 ## FAQs
 1. PROGRAM ABORT: Pipe at the begining of 'core_pattern'
@@ -58,7 +58,12 @@ When you enter the fuzz command, you will see the following screenshot in the te
    sudo sh -c 'echo core > /proc/sys/kernel/core_pattern'
    ulimit -c unlimit
    ```
-2. PROGRAM 
+2. PROGRAM ABORT: Prrogram 'tcp://127.0.0.1/1502' not found or not executable.
+   This is probably because the path of aflnet is not set correctly. Please check the calling path of aflnet and reset the PATH variables.
+   ```bash
+   which afl-fuzz
+   echo $PATH
+   ```
 
 
  
