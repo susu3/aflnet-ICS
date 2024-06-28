@@ -36,7 +36,7 @@ We should see the output ```server``` in the tests directory.
 
 ## Step-1. Prepare message sequences as seed inputs
 
-You can find a file to use as seed inputs in the aflnet/tutorials/dcmqrscp/in-dicom directory. If you want to create your own inputs, please follow the tutorial for fuzzing Live555 RTSP server included in the main AFLNet README.md. You can use the program in tests to generate the requests.
+You can find a file to use as seed inputs in the aflnet/tutorials/libmodbus/in-modbus directory. If you want to create your own inputs, please follow the tutorial for fuzzing Live555 RTSP server included in the main AFLNet README.md. You can use the program in tests to generate the requests.
 ```bash
 cd tests
 ./random-test-server
@@ -49,9 +49,16 @@ cd tests
 cd $WORKDIR/libmodbus/tests
 afl-fuzz -d -i $AFLNET/tutorials/libmodbus/in-modbus -o out-libmodbus -N tcp://127.0.0.1/1502 -P MODBUS -D 10000 -q 3 -s 3 -E -K -R ./server 1502
 ```
+When you enter the fuzz command, you will see the following screenshot in the terminal. Once AFLNet discovers a bug, a crash or a hang, a test case containing the message sequence that triggers the bug will be stored in ```replayable-crashes``` or ```replayable-hangs``` folder. Then you can use the untility ```aflnet-replay``` to replay these message sequences. 
+![screenshot of the fuzz program](images\WechatIMG1497.jpg)
 
 ## FAQs
 1. PROGRAM ABORT: Pipe at the begining of 'core_pattern'
+   ```bash
+   sudo sh -c 'echo core > /proc/sys/kernel/core_pattern'
+   ulimit -c unlimit
+   ```
+2. PROGRAM 
 
 
  
