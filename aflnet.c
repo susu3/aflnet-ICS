@@ -11,6 +11,8 @@
 #include "alloc-inl.h"
 #include "aflnet.h"
 
+#include "limits.h"
+
 // Protocol-specific functions for extracting requests and responses
 
 region_t* extract_requests_smtp(unsigned char* buf, unsigned int buf_size, unsigned int* region_count_ref)
@@ -1514,7 +1516,15 @@ unsigned int* extract_response_codes_http(unsigned char* buf, unsigned int buf_s
 
 //same as extract request
 //buf: response data; state_count_ref: 
-unsigned int* extract_response_codes_modbus(unsigned char* buf, unsigned int buf_size, unsigned int* state_count_ref){
+unsigned int* extract_response_codes_modbus(unsigned char* buf, unsigned int buf_size, unsigned int* state_count_ref)
+{
+  FILE *file = fopen("stateCode.txt","w");
+  if(file == NULL){
+    perror("fopen error\n");
+    return;
+  }
+  fflush(file);
+
   unsigned char* end_ptr = buf + buf_size -1;
   unsigned char* cur_ptr = buf;
   unsigned int* state_sequence = NULL;
@@ -1522,7 +1532,7 @@ unsigned int* extract_response_codes_modbus(unsigned char* buf, unsigned int buf
 
   state_count++;
   state_sequence = (unsigned int*)ck_realloc(state_sequence, state_count*sizeof(unsigned int));
-  state_sequence[state_count-1] = 0;
+  state_sequence[state_count-1] = UINT_MAX; //function code: 0-255
 
   if (buf == NULL || buf_size == 0)
     goto RET;
@@ -1556,6 +1566,12 @@ unsigned int* extract_response_codes_modbus(unsigned char* buf, unsigned int buf
       }
       state_sequence[state_count-1] = message_code;
       cur_ptr = cur_ptr + available_data_length;
+      for(int i = sizeof(unsigned int)-1；i>=0; i--){
+        unsigned char byte = (message_code >> (i*8)) & 0xFF;
+        fprintf(file, "%02x", byte);
+      }
+      fprintf(file,"\n");
+      fflush(file);
     } else
         break;
   }
