@@ -1566,7 +1566,7 @@ unsigned int* extract_response_codes_modbus(unsigned char* buf, unsigned int buf
       }
       state_sequence[state_count-1] = message_code;
       cur_ptr = cur_ptr + available_data_length;
-      for(int i = sizeof(unsigned int)-1；i>=0; i--){
+      for(int i = sizeof(unsigned int)-1; i>=0; i--){
         unsigned char byte = (message_code >> (i*8)) & 0xFF;
         fprintf(file, "%02x", byte);
       }
