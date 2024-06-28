@@ -27,7 +27,6 @@ Once libmodbus source code has been successfully compiled, we can see the compil
 
 Then, we generate the program for fuzzing use the following commands.
 ```bash
-#
 cd tests
 afl-clang-fast random-test-server.c -I../src ../src/.libs/libmodbus.a -o server
 ```
