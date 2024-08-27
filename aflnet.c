@@ -875,6 +875,68 @@ region_t* extract_requests_modbus(unsigned char* buf, unsigned int buf_size, uns
     return regions; //将buf中每个field的开始结束位置标记
 }
 
+region_t *extract_requests_iec104(unsigned char *buf, unsigned int buf_size, unsigned int *region_count_ref) {
+
+    unsigned char *end_ptr = buf + buf_size;
+    unsigned char *cur_ptr = buf;
+    unsigned int cur = 0;
+    unsigned int region_count = 0;
+    unsigned int remaining_buf = 0;
+    unsigned short length = 0;
+
+    region_t *regions = NULL;
+    unsigned char start_byte = 0x68;
+
+    if (buf == NULL || buf_size == 0) {
+        *region_count_ref = region_count;
+        return regions;
+    }
+
+    while (cur_ptr < end_ptr) {
+        remaining_buf = end_ptr - cur_ptr;
+        // Check if the first bytes are 0x68
+        if (*cur_ptr == start_byte && (cur_ptr + 1) != end_ptr) {
+            length = *(cur_ptr + 1);
+            if (length + 2 <= remaining_buf) {    //china standard length: length <= 253
+                region_count++;
+                regions = (region_t *)ck_realloc(regions, region_count * sizeof(region_t));
+                regions[region_count - 1].start_byte = cur;
+                regions[region_count - 1].end_byte = cur + length + 1;
+                regions[region_count - 1].state_sequence = NULL;
+                regions[region_count - 1].state_count = 0;
+
+                cur = cur + length + 2;
+                cur_ptr = cur_ptr + length + 2;
+            } else {
+                region_count++;
+                regions = (region_t *)ck_realloc(regions, region_count * sizeof(region_t));
+                regions[region_count - 1].start_byte = cur;
+                regions[region_count - 1].end_byte = cur + remaining_buf - 1;
+                regions[region_count - 1].state_sequence = NULL;
+                regions[region_count - 1].state_count = 0;
+
+                break;
+            }
+        } else {
+            cur_ptr++;
+            cur++;
+        }
+    }
+    // in case region_count equals zero, it means that the structure of the buffer
+    // is broken hence we create one region for the whole buffer
+    if ((region_count == 0) && (buf_size > 0)) {
+        regions = (region_t *)ck_realloc(regions, sizeof(region_t));
+        regions[0].start_byte = 0;
+        regions[0].end_byte = buf_size - 1;
+        regions[0].state_sequence = NULL;
+        regions[0].state_count = 0;
+        region_count = 1;
+    }
+
+    *region_count_ref = region_count;
+    return regions;
+}
+
 
 
 
@@ -1518,13 +1580,6 @@ unsigned int* extract_response_codes_http(unsigned char* buf, unsigned int buf_s
 //buf: response data; state_count_ref: 
 unsigned int* extract_response_codes_modbus(unsigned char* buf, unsigned int buf_size, unsigned int* state_count_ref)
 {
-  FILE *file = fopen("stateCode.txt","w");
-  if(file == NULL){
-    perror("fopen error\n");
-    return;
-  }
-  fflush(file);
-
   unsigned char* end_ptr = buf + buf_size -1;
   unsigned char* cur_ptr = buf;
   unsigned int* state_sequence = NULL;
@@ -1532,7 +1587,7 @@ unsigned int* extract_response_codes_modbus(unsigned char* buf, unsigned int buf
 
   state_count++;
   state_sequence = (unsigned int*)ck_realloc(state_sequence, state_count*sizeof(unsigned int));
-  state_sequence[state_count-1] = UINT_MAX; //function code: 0-255
+  state_sequence[state_count-1] = 0; //function code: 0-255
 
   if (buf == NULL || buf_size == 0)
     goto RET;
@@ -1566,17 +1621,78 @@ unsigned int* extract_response_codes_modbus(unsigned char* buf, unsigned int buf
       }
       state_sequence[state_count-1] = message_code;
       cur_ptr = cur_ptr + available_data_length;
-      for(int i = sizeof(unsigned int)-1；i>=0; i--){
+      for(int i = sizeof(unsigned int)-1; i>=0; i--){
         unsigned char byte = (message_code >> (i*8)) & 0xFF;
-        fprintf(file, "%02x", byte);
       }
-      fprintf(file,"\n");
-      fflush(file);
     } else
         break;
   }
 
   RET:
+    *state_count_ref = state_count;
+    return state_sequence;
+}
+
+unsigned int *extract_response_codes_iec104(unsigned char *buf, unsigned int buf_size, unsigned int *state_count_ref) {
+    unsigned char *cur_ptr = buf;
+    unsigned char *end_ptr = buf + buf_size;
+    unsigned int *state_sequence = NULL;
+    unsigned int state_count = 0;
+    unsigned char start_byte = 0x68;
+    unsigned short length = 0;
+    unsigned int remaining_buf = 0;
+    unsigned int message_code;
+    unsigned char code_temp;
+
+    state_count++;
+    state_sequence = (unsigned int *)ck_realloc(state_sequence, state_count * sizeof(unsigned int));
+    state_sequence[state_count - 1] = 0;
+
+//    state_count++;
+//    state_sequence = (unsigned int *)ck_realloc(state_sequence, state_count * sizeof(unsigned int));
+//    state_sequence[state_count - 1] = UINT_MAX; // state including 0
+
+    if (buf == NULL || buf_size == 0) {
+        *state_count_ref = state_count;
+        return state_sequence;
+    }
+
+    while (cur_ptr < end_ptr) {
+        remaining_buf = end_ptr - cur_ptr;
+        // Check if the first bytes are 0x68
+        if (remaining_buf < 3) {
+            break;
+        }
+        if (*cur_ptr == start_byte) {
+          code_temp = *(cur_ptr + 2);
+          if ((code_temp & 0x01) == 0) { // I-format: message code = control-field1 +Type Identification
+            message_code = 0;
+            if (cur_ptr + 6 < end_ptr) {
+              memcpy((char *)&message_code + 1, cur_ptr + 6, 1);
+            }
+          } else if ((code_temp & 0x03) == 1) { // S-format
+            message_code = code_temp & 0x03;
+          } else if ((code_temp & 0x03) == 3) { // U-format
+            message_code = code_temp;
+          } else {
+            message_code = code_temp;
+          }
+          state_count++;
+          state_sequence = (unsigned int *)ck_realloc(
+              state_sequence, state_count * sizeof(unsigned int));
+          state_sequence[state_count - 1] = message_code;
+
+          length = *(cur_ptr + 1);
+          if (length + 2 <= remaining_buf) {
+            cur_ptr = cur_ptr + length + 2;
+          } else {
+            break;
+          }
+        } else {
+          cur_ptr++;
+        }
+    }
+
     *state_count_ref = state_count;
     return state_sequence;
 }
