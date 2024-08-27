@@ -27,7 +27,7 @@ Once source code has been successfully compiled, we can see an executable progra
 
 ## Step-1. Prepare message sequences as seed inputs
 
-You can find a file to use as seed inputs in the aflnet/tutorials/iec104 directory. If you want to create your own inputs, please follow the tutorial for fuzzing Live555 RTSP server included in the main AFLNet README.md. 
+You can find a file to use as seed inputs in the ```aflnet/tutorials/iec104``` directory. If you want to create your own inputs, please follow the tutorial for fuzzing Live555 RTSP server included in the main AFLNet README.md. 
 
 ## Step-2. Fuzzing
 ```bash
