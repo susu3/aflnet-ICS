@@ -18,7 +18,7 @@ cd LinuxSDK/x86_64/
 We make some modifications to ensure compatibility with the AFLNet. Specifically, we switched the C/C++ compiler to afl-clang-fast/afl-clang-fast++ and adjusted the implementation to pass the server port as a parameter. 
 ![screenshot of the makefile](WechatIMG1615.jpg)
 ![screenshot of the source](WechatIMG1616.jpg)
-```
+```bash
 # Compile source
 cd project
 make -f iec104servertext.mak
