@@ -73,3 +73,65 @@ make
 - The server must be started before the client
 - Default configuration uses localhost (127.0.0.1) and port 10000
 - Make sure no other service is using the specified port
+
+## Fuzzing with AFLNet
+
+### Prerequisites
+- Install AFLNet and its dependencies
+- ASAN (Address Sanitizer) support
+
+### Preparing for Fuzzing
+
+1. Modify the Makefile (`test/Makefile`) to use AFL compiler and enable ASAN:
+
+```diff
+-CC = gcc
++CC = afl-clang-fast
+
+ CFLAGS +=-I$(MODULE_PATH) -lpthread
+ CFLAGS +=-I$(APP_PATH)
++CFLAGS +=-Wno-return-type -fsanitize=address -g -O0
++LDFLAGS +=-fsanitize=address
+```
+
+2. Rebuild the project with AFL instrumentation:
+
+```bash
+cd test
+make clean
+make
+```
+
+### Running the Fuzzer
+
+1. You need to make sure afl-fuzz is installed. For example, in `~/.bashrc`:
+
+```bash
+export PATH=$PATH:$HOME/aflnet-ICS
+export AFL_PATH=$HOME/aflnet-ICS
+export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+```
+
+2. Run AFL-Fuzz:
+```bash
+afl-fuzz -d -i ~/aflnet-ICS/tutorials/iec104/in-iec104/ -o out-iec104 \
+    -N tcp://127.0.0.1/10000 -P IEC104 -W 1000 -q 3 -s 3 -E -K -R \
+    -m none ./iec104_monitor 10000
+```
+
+Key fuzzing parameters:
+- `-d`: Skip deterministic steps
+- `-i`: Input directory containing seed files
+- `-o`: Output directory for fuzzing results
+- `-N`: Network protocol configuration
+- `-P`: Protocol name
+- `-W`: Wait time (ms) for the server to initialize
+- `-q`: Queue size for states
+- `-s`: State count
+- `-E`: Enable state-aware mode
+- `-K`: Enable response collection
+- `-R`: Enable region-level mutation
+- `-m none`: Disable memory limits
+
+### Analyzing Results
+The fuzzer will store crashes and hangs in the output directory (`out-iec104`). These can be analyzed to identify potential vulnerabilities in the implementation.
