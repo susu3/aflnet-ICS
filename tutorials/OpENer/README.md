@@ -18,9 +18,11 @@ sudo apt-get install cmake make gcc binutils
 3. Build OpENer:
 ```bash
 cd OpENer/bin/posix
-./setup_posix.sh
+./setup_posix_fuzz_afl.sh
 make
 ```
+
+If `setup_posix_fuzz_afl.sh` fails, you can try it again.
 
 ## Fuzzing
 
@@ -37,14 +39,14 @@ export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 afl-fuzz -t 5000 -d \
          -i fuzz/inputs/ \
          -o out-opener \
-         -N tcp://127.0.0.1/20000 \
-         -P ENIP \
+         -N tcp://127.0.0.1/44818 \
+         -P ETHERNETIP \
          -W 1000 \
          -q 3 \
          -s 3 \
          -E -K -R \
          -m none \
-         ./bin/posix/src/ports/POSIX/OpENer eth1
+         ./bin/posix/src/ports/POSIX/OpENer lo
 ```
 
 ### Command Line Arguments Explained:
