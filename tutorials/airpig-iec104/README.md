@@ -93,6 +93,7 @@ make
 +CFLAGS +=-Wno-return-type -fsanitize=address -g -O0
 +LDFLAGS +=-fsanitize=address
 ```
+2. Modify the "return;" in main.c
 
 2. Rebuild the project with AFL instrumentation:
 
